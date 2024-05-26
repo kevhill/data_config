@@ -1,0 +1,22 @@
+{
+  "build": {
+		"dockerfile": "Dockerfile",
+		"context": ".."
+	},
+  
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "GitHub.vscode-pull-request-github",
+        "charliermarsh.ruff",
+        "redhat.vscode-yaml",
+        "ms-vscode.makefile-tools",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "python.testing.pytestEnabled": true
+      }
+    }
+  }
+}
