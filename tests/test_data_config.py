@@ -1,4 +1,4 @@
-from data_config import BaseConfig
+from stacked_config import BaseConfig
 
 from typing import Optional, List
 

@@ -6,4 +6,4 @@ RUN pip install -r /tmp/requirements.txt
 ADD .devcontainer/dev-requirements.txt /tmp/dev-requirements.txt
 RUN pip install -r /tmp/dev-requirements.txt
 
-ENV PYTHONPATH "${PYTHONPATH}:/workspaces/data_config/"
+ENV PYTHONPATH "${PYTHONPATH}:/workspaces/stacked_config/"
