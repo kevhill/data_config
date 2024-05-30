@@ -5,6 +5,10 @@ import typing
 import yaml
 import json
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class ConfigLoadException(Exception):
     pass
@@ -12,14 +16,14 @@ class ConfigLoadException(Exception):
 
 class BaseConfig():
     __frozen = False
-    __env_root: str | None = None
+    __env_prefix: str | None = None
 
-    def __init__(self, _freeze: bool=True, _env_root: str | None=None, **kwargs):
+    def __init__(self, _freeze: bool=True, _env_prefix: str | None=None, **kwargs):
 
-        if _env_root is None:
-            self.__env_root = self.__class__.__module__
+        if _env_prefix is None:
+            self.__env_prefix = self.__class__.__module__
         else:
-            self.__env_root = _env_root
+            self.__env_prefix = _env_prefix
 
         self.__freeze = _freeze
 
@@ -43,7 +47,6 @@ class BaseConfig():
 
     def __parse_value(self, f_type: typing.Type, k: str, v: typing.Any):
 
-        print(f_type)
         t_origin = typing.get_origin(f_type)
         t_args = typing.get_args(f_type)
 
@@ -55,9 +58,11 @@ class BaseConfig():
                 if not isinstance(v, dict):
                     raise ConfigLoadException(f"Attemping to load {f_type} but found {v}")
 
-                new_env_root = self.__env_root + '_' + k
+                new_env_prefix = self.__env_prefix + '_' + k
+                logger.debug(f"Loading child config of type {f_type} and _env_prefix={new_env_prefix}")
                 
-                v = f_type.from_dict(v, _env_root=new_env_root, _freeze=self.__freeze)
+                v = f_type.from_dict(v, _env_root=new_env_prefix, _freeze=self.__freeze)
+
         elif t_origin is typing.Union:
             if len(t_args) > 2 or type(None) not in t_args:
                 raise TypeError(f'Only Optional[] is supported found Union{repr(list(t_args))}')
@@ -68,12 +73,23 @@ class BaseConfig():
         if f_type is not str and isinstance(v, str):
             if f_type in (int, float):
                 v = f_type(v)
+
             elif f_type is dict:
                 v = json.loads(v)
+
+            elif f_type is bool:
+                valid_bool = ('True', 'true', 'False', 'false')
+                if v not in valid_bool:
+                    raise TypeError(f"Expected {valid_bool} but got '{v}'")
+                v = v in ('True', 'true')
+
             elif t_origin is list:
                 v = v.split(',')
                 r_f_type = t_args[0]
                 v = [self.__parse_value(r_f_type, k, item.strip()) for item in v]
+
+            else:
+                raise TypeError(f"Unsupported string parsing for type: {f_type}")
 
         return v
     
@@ -82,8 +98,8 @@ class BaseConfig():
         v = None
 
         # first, try the env var with full env root
-        if self.__env_root is not None:
-            env_k = (self.__env_root + '_' + k).upper()
+        if self.__env_prefix is not None:
+            env_k = (self.__env_prefix + '_' + k).upper()
             v = os.environ.get(env_k)
             
         if v is None:
@@ -111,19 +127,27 @@ class BaseConfig():
         
         for field in self.__annotations__:
             if getattr(self, field, None) != getattr(other, field, None):
-                print(f"{getattr(self, field)} != {getattr(other, field)}")
                 return False
 
         return True
     
-    @classmethod
-    def from_dict(cls, data, **kwargs):
-        
-        return cls(**data, **kwargs)
+    def __repr__(self):
+        r = f"{self.__class__.__module__}.{self.__class__.__name__}("
+        r += ', '.join([f"{f}={repr(getattr(self, f))}" for f in self.__annotations__])
+        r += ')'
+        return r
     
     @classmethod
-    def from_file(cls, file):
+    def from_dict(cls, data, _freeze=True, _env_prefix=None):
+        
+        return cls(**data, _freeze=_freeze, _env_prefix=_env_prefix)
+    
+    @classmethod
+    def from_file(cls, file, _freeze=True, _env_prefix=None, **override_values):
         with open(file, 'r') as fp:
             data = yaml.load(fp.read(), Loader=yaml.Loader)
+
+        if override_values:
+            data.update(override_values)
         
-        return cls.from_dict(data)
+        return cls.from_dict(data, _freeze=_freeze, _env_prefix=_env_prefix)

@@ -2,9 +2,8 @@
 
 ## Overview
 
-This is a small library to manage configuring python applications. It uses the dataclass functionality introduced in python 3.7
-and attempts to make configuration consistent across development, production, and interactive coding environments. The core
-features to enables this are:
+This is a small library to manage configuring python applications. It started as a desire to explore the type annotation
+functionality added to python, and build a consistent and flexible means of defining configurations.
 
 - Loading from multiple sources, with automatic fallback
   - Runtime configuration
